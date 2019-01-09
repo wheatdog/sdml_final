@@ -1,6 +1,7 @@
 import argparse
 import pandas as pd
 from tqdm import tqdm
+from average_precision import mapk
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -30,31 +31,18 @@ def main(args):
 
     df = pd.read_csv(args.predict_file)
 
-    user_cnt = 0
-    mean_ap = 0
+    actual = []
+    predicted = []
     for idx, row in tqdm(df.iterrows(), unit='line', total=df.shape[0], postfix='processing {}'.format(args.predict_file)):
         userid = row['userid']
         foodids = [int(i) for i in row['foodid'].split()]
-        if len(foodids) > args.max_count:
-            foodids = foodids[:args.max_count]
-
-        # make sure uniqueness of predictions
-        assert(len(foodids) == len(set(foodids)))
-
         unseen_foods = seen_test[userid] - seen_train[userid]
 
-        ap = 0
-        hit = 0
-        for c, food in enumerate(foodids):
-            if food in unseen_foods:
-                hit += 1
-                ap += hit/(c+1)
-        ap /= min(len(unseen_foods), args.max_count)
-        mean_ap += ap
-        user_cnt += 1
-    mean_ap /= user_cnt
-    print(mean_ap)
+        predicted.append(foodids)
+        actual.append(list(unseen_foods))
 
+    print(mapk(actual, predicted, k=20))
 
 if __name__ == '__main__':
     main(get_args())
+
